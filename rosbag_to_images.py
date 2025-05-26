@@ -26,7 +26,7 @@ def main():
             for connection, timestamp, rawdata in tqdm(reader.messages()):
                 if 'gen3_image' in connection.topic: # topic Name of images
                     msg = reader.deserialize(rawdata, connection.msgtype)
-                    if frame%N == 0 and 3000 < frame < 3300:
+                    if frame%N == 0:
                         img = message_to_cvimage(msg, 'bgr8') # change encoding type if needed
                         # img = cv2.resize(img, (width, int(img.shape[0]*width/img.shape[1])), interpolation=cv2.INTER_AREA)
                         # cv2.imwrite(image_output_dir + f'/{os.path.basename(rosbag_path).split(".")[0]}_%06i.png' % frame, img)
