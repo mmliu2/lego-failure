@@ -19,7 +19,7 @@ class PickPlaceClassifyNode:
         self.robot_name = robot_name
 
         # load model
-        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/pick_place_svm.pkl')
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/pick_place_svm_061325.pkl')
         with open(model_path, 'rb') as file:
             self.clf = pickle.load(file)
         self.model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
