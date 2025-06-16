@@ -42,12 +42,15 @@ def compute_embeddings(files: list) -> dict:
 
 if __name__ == "__main__":
     train_dir = './data/train_images_061225'
-    model_save_path = './models/pick_place_svm_061325.pkl'
+    model_save_path = './models/pick_place_svm_061225.pkl'
 
     labels = {}
     for folder in os.listdir(train_dir):
+        if folder == 'excluded':
+            continue
+        print(folder)
         for file in os.listdir(os.path.join(train_dir, folder)):
-            if file.endswith(".png"):
+            if file.endswith(".png") or file.endswith(".jpg"):
                 full_name = os.path.join(train_dir, folder, file)
                 labels[full_name] = folder
     files = labels.keys()
@@ -62,6 +65,7 @@ if __name__ == "__main__":
                                 T.Normalize([0.5], [0.5]),
                                 T.Grayscale(num_output_channels=3),
                                 ])
+    
 
     embeddings = compute_embeddings(files)
     clf = svm.SVC(gamma='scale')

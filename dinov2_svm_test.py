@@ -37,12 +37,12 @@ def results(paths, expected_output=''):
                 count += 1
             else:
                 print(input_file)
-                plt.imshow(Image.open(input_file))
-                plt.show()
+                # plt.imshow(Image.open(input_file))
+                # plt.show()
     print(count/len(paths))
 
 if __name__ == "__main__":
-    model_path = os.getcwd() + '/models/pick_place_svm.pkl'
+    model_path = os.getcwd() + '/models/pick_place_svm_061225.pkl'
     test_path = os.getcwd() + '/data/test_images/'
 
     warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -57,9 +57,9 @@ if __name__ == "__main__":
     dinov2_vits14.to(device)
 
     # image paths
-    success_test_dir = os.path.join(test_path, 'success/')
+    success_test_dir = os.path.join(test_path, 'new_success/')
     success_paths = ([os.path.join(success_test_dir, f) for f in os.listdir(success_test_dir)])
-
+ 
     failure_test_dir = os.path.join(test_path, 'failure/')
     failure_paths = ([os.path.join(failure_test_dir, f) for f in os.listdir(failure_test_dir)])
 
