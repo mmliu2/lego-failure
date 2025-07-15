@@ -42,8 +42,8 @@ def results(paths, expected_output=''):
     print(count/len(paths))
 
 if __name__ == "__main__":
-    model_path = os.getcwd() + '/models/pick_place_svm_061225.pkl'
-    test_path = os.getcwd() + '/data/test_images/'
+    model_path = os.getcwd() + './pick_place_svm_061225.pkl'
+    test_path = os.getcwd() + '../data/test_images/'
 
     warnings.filterwarnings('ignore', category=DeprecationWarning)
 

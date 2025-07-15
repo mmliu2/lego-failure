@@ -18,8 +18,11 @@ class PickPlaceClassifyNode:
     def __init__(self, robot_name):
         self.robot_name = robot_name
 
+        self.rate = rospy.Rate(1)
+        self.latest_image = None
+
         # load model
-        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/pick_place_svm_061325.pkl')
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../models/pick_place_svm_061225.pkl')
         with open(model_path, 'rb') as file:
             self.clf = pickle.load(file)
         self.model = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
@@ -39,6 +42,14 @@ class PickPlaceClassifyNode:
         
         rospy.loginfo("PickPlaceClassifyNode initialized. Waiting for images...")
 
+        while not rospy.is_shutdown():
+            if self.latest_image is not None:
+                self.process_image()
+            self.rate.sleep()
+
+    def image_callback(self, msg):
+        self.latest_image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='rgb8')
+
     def pick_place_prediction(self, cv2_img):
         pil_img = Image.fromarray(cv2_img)
         transformed_img = self.transformation(pil_img)[:3].unsqueeze(0)
@@ -52,11 +63,11 @@ class PickPlaceClassifyNode:
         elif prediction == 'failure':
             return 0
 
-    def image_callback(self, msg):
-        rospy.loginfo("Received image")
+    def process_image(self):
+        img = self.latest_image
+
         result = Bool()
 
-        img = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='rgb8')
         result.data = self.pick_place_prediction(img)
 
         self.result_pub.publish(result)

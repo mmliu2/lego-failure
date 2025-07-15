@@ -41,8 +41,8 @@ def compute_embeddings(files: list) -> dict:
 
 
 if __name__ == "__main__":
-    train_dir = './data/train_images_061225'
-    model_save_path = './models/pick_place_svm_061225.pkl'
+    train_dir = '../data/train_images_061225'
+    model_save_path = './pick_place_svm_061225.pkl'
 
     labels = {}
     for folder in os.listdir(train_dir):

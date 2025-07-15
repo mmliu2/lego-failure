@@ -1,20 +1,14 @@
 #!/usr/bin/env python3
 import rospy
 
-import numpy as np
-import torch
-import torchvision.transforms as T
-from PIL import Image
-import pickle
+import rospy
+from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 import cv2
-from datetime import datetime
 
-from sensor_msgs.msg import CompressedImage
-from std_msgs.msg import Bool
-
+import argparse
 import os
-import sys
+from datetime import datetime
 
 class PickPlaceSaveNode:
     def __init__(self, robot_name):
@@ -38,7 +32,9 @@ class PickPlaceSaveNode:
 
     def run(self):
         while not rospy.is_shutdown():
-            input("Press enter to save image:")
+            s = input("Press enter to save image (-1 to exit): ")
+            if s == '-1': exit(0)
+
             if self.image is not None:
                 filename = os.path.join(self.save_dir, f"gen3_{self.now}_{self.counter:04d}.jpg")
                 cv2.imwrite(filename, self.image)
@@ -49,9 +45,10 @@ class PickPlaceSaveNode:
 
 
 if __name__ == '__main__':
-    robot_name = sys.argv[1] 
-    assert(robot_name in ['yk_architect', 'yk_builder', 'yk_creator', 'yk_destroyer'])
+    parser = argparse.ArgumentParser(description='Camera selection script.')
+    parser.add_argument('robot_name', help='Robot to use: yk_architect, yk_builder, yk_creator, yk_destroyer')
+    args = parser.parse_args()
 
-    rospy.init_node(f'{robot_name}_pick_place_save_node', anonymous=False)
-    node = PickPlaceSaveNode(robot_name)
+    rospy.init_node(f'{args.robot_name}_pick_place_save_node', anonymous=False)
+    node = PickPlaceSaveNode(args.robot_name)
     rospy.spin()
