@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 from cv_bridge import CvBridge
 
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image, CompressedImage
 from std_msgs.msg import Bool
 
 import sys
@@ -22,15 +22,17 @@ class GapClassifyNode:
         self.rate = rospy.Rate(1)
         self.latest_image = None
         self.frame_count = 0
-        self.save_dir = '../data/gap_classify_node_visualization'
-        shutil.rmtree(self.save_dir)
-        os.makedirs(self.save_dir, exist_ok=True)
+
+        # self.save_dir = '/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/data/gap_classify_node_visualization'
+        # shutil.rmtree(self.save_dir)
+        # os.makedirs(self.save_dir, exist_ok=True)
 
         self.bridge = CvBridge()
 
         self.result_pub = rospy.Publisher(f'/{robot_name}/gap_classify', Bool, queue_size=1)
         rospy.Subscriber(f'/{robot_name}/gen3_image/compressed', CompressedImage, self.image_callback)
-        # self.vis_pub = rospy.Publisher(f'/{robot_name}/gap_classify_vis', CompressedImage, queue_size=1)
+        self.vis_pub = rospy.Publisher(f'/{robot_name}/gap_classify_vis', Image, queue_size=1)
+        self.edge_pub = rospy.Publisher(f'/{robot_name}/gap_classify_edge', Image, queue_size=1)
         
         rospy.loginfo("GapClassifyNode initialized. Waiting for images...")
 
@@ -40,22 +42,24 @@ class GapClassifyNode:
             self.rate.sleep()
 
     def image_callback(self, msg):
-        self.latest_image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        self.latest_image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding='rgb8')
 
     def process_image(self):
         img = self.latest_image
 
         result = Bool()
-        # result_vis = CompressedImage()
 
-        gap_prediction, vis_img = self.detector(img)
+        gap_prediction, vis_img, edge_img = self.detector(img)
         result.data = gap_prediction
-        # result_vis.data = vis_img
 
         self.result_pub.publish(result)
-        cv2.imwrite(self.save_dir + f'/{self.frame_count:04}.png', vis_img)
+        # cv2.imwrite(self.save_dir + f'/{self.frame_count:04}.png', vis_img)
         self.frame_count += 1
-        # self.vis_pub.publish(result_vis)
+        # vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
+        vis_msg = self.bridge.cv2_to_imgmsg(vis_img, encoding="rgb8")
+        self.vis_pub.publish(vis_msg)
+        edge_msg = self.bridge.cv2_to_imgmsg(edge_img, encoding="rgb8")
+        self.edge_pub.publish(edge_msg)
 
         rospy.loginfo(f"{robot_name} result: %s", result.data)
         
@@ -65,9 +69,9 @@ if __name__ == '__main__':
     assert(robot_name in ['yk_architect', 'yk_builder', 'yk_creator', 'yk_destroyer'])
 
     if robot_name == 'yk_destroyer':
-        detector = gap_detector.GapDetector(center=(300, 288), size=352, theta=0)
+        detector = gap_detector.GapDetector(robot_name)
     else:
-        detector = gap_detector.GapDetector(center=(300, 288), size=352, theta=0)
+        detector = gap_detector.GapDetector(robot_name)
         
     rospy.init_node(f'{robot_name}_gap_classify_node', anonymous=False)
     node = GapClassifyNode(robot_name, detector)

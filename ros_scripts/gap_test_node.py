@@ -1,3 +1,6 @@
+# test gap classifier and save individual images
+# adjust calibration in gap_detection/gap_detector.py
+
 #!/usr/bin/env python3
 import rospy
 
@@ -28,13 +31,13 @@ class GapTestNode:
         self.image = None
         self.counter = 0
 
-        rospy.Subscriber(f'/{robot_name}/gen3_image/compressed', CompressedImage, self.image_callback)
+        rospy.Subscriber(f'/{robot_name}/gen3_image/compressed', Image, self.image_callback)
         rospy.loginfo("GapTestNode initialized. Waiting for images...")
         self.run()
 
     def image_callback(self, msg):
         try:
-            self.image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="bgr8")
+            self.image = self.bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="rgb8")
         except Exception as e:
             rospy.logerr(f"CV Bridge error: {e}")
 
@@ -45,11 +48,14 @@ class GapTestNode:
                 filename = os.path.join(self.save_dir, f"{self.counter:04d}.jpg")
                 cv2.imwrite(filename, self.image)
                 rospy.loginfo(f"Saved image: {filename}")
+
                 filename_t = os.path.join(self.save_dir, f"{self.counter:04d}_result.jpg")
-                result, vis_img = self.detector(self.image)
+                result, vis_img, edge_img = self.detector(self.image)
                 rospy.loginfo(f"GAP: {result}")
+                vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
                 cv2.imwrite(filename_t, vis_img)
                 rospy.loginfo(f"Saved image: {filename_t}")
+                
                 self.counter += 1
             else:
                 print("No image received yet.")
@@ -62,9 +68,9 @@ if __name__ == '__main__':
     rospy.init_node(f'{robot_name}_gap_test_node', anonymous=False)
 
     if robot_name == 'yk_destroyer':
-        detector = gap_detector.GapDetector(center=(300, 288), size=352, theta=0)
+        detector = gap_detector.GapDetector(robot_name)
     else:
-        detector = gap_detector.GapDetector(center=(468, 450), size=550, theta=0)
+        detector = gap_detector.GapDetector(robot_name)
 
     node = GapTestNode(robot_name, detector)
 
