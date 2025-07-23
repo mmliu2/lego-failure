@@ -31,7 +31,7 @@ class GapTestNode:
         self.image = None
         self.counter = 0
 
-        rospy.Subscriber(f'/{robot_name}/gen3_image/compressed', Image, self.image_callback)
+        rospy.Subscriber(f'/{robot_name}/gen3_image/compressed', CompressedImage, self.image_callback)
         rospy.loginfo("GapTestNode initialized. Waiting for images...")
         self.run()
 
@@ -46,15 +46,18 @@ class GapTestNode:
             input("Press enter to save image:")
             if self.image is not None:
                 filename = os.path.join(self.save_dir, f"{self.counter:04d}.jpg")
+                self.image = cv2.cvtColor(self.image, cv2.COLOR_RGB2BGR)
                 cv2.imwrite(filename, self.image)
                 rospy.loginfo(f"Saved image: {filename}")
 
-                filename_t = os.path.join(self.save_dir, f"{self.counter:04d}_result.jpg")
-                result, vis_img, edge_img = self.detector(self.image)
-                rospy.loginfo(f"GAP: {result}")
-                vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(filename_t, vis_img)
-                rospy.loginfo(f"Saved image: {filename_t}")
+                # result, vis_img, edge_img = self.detector(self.image)
+                # rospy.loginfo(f"GAP: {result}")
+                # vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
+                # filename_t = os.path.join(self.save_dir, f"{self.counter:04d}_result.jpg")
+                # cv2.imwrite(filename_t, vis_img)
+                # filename_t = os.path.join(self.save_dir, f"{self.counter:04d}_edge.jpg")
+                # cv2.imwrite(filename_t, edge_img)
+                
                 
                 self.counter += 1
             else:

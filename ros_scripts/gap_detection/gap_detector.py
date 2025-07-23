@@ -15,18 +15,18 @@ import cv2
 
 
 class GapDetector:
-    def __init__(self, robot_name, detected_angle_tol=25, distance_tol=15,
+    def __init__(self, robot_name, detected_angle_tol=25, distance_tol=10,
                  display=False):
         
         # july 2025
         if robot_name == 'yk_destroyer':
-            center_xy = (290, 190)
-            unit_length = 200
+            center_xy = (255, 295)
+            unit_length = 160
             theta = 90 # TODO: adjust view pose so that theta ~= 0
-        elif robot_name == 'yk_destroyer':
-            center_xy = (300, 205)
-            unit_length = 172
-            theta = 0
+        elif robot_name == 'yk_architect':
+            center_xy = (305, 215)
+            unit_length = 180
+            theta = 91
         else:
             raise Exception('Invalid robot name')
         
@@ -156,12 +156,14 @@ class GapDetector:
         angle = math.degrees(math.atan2(y2 - y1, x2 - x1))
         return angle % 180  # Normalize to [0, 180)
     
-    def get_topmost_line(self, cropped_img, lines):
+    def get_topmost_line(self, img, lines):
+        lines_img = cv2.resize(img, None, fx=self.hough_scale, fy=self.hough_scale, interpolation=cv2.INTER_AREA)
+
         # get topmost line
         top_line = None
 
         if lines is None:
-            return None
+            return None, lines_img
         
         sorted_lines = sorted(lines, key=lambda line: line[1] + line[3])
 
@@ -190,21 +192,21 @@ class GapDetector:
         #     print("No valid lines")
         #     return top_line
     
-        if self.display: # show candidates
+        # if self.display: # show candidates
             # scaled down image
-            lines_img = cv2.resize(cropped_img, None, fx=self.hough_scale, fy=self.hough_scale, interpolation=cv2.INTER_AREA)
+        # lines_img = cv2.resize(img, None, fx=self.hough_scale, fy=self.hough_scale, interpolation=cv2.INTER_AREA)
 
-            # tolerance lines
-            for x_shift in (-self.distance_tol_left, 0, self.distance_tol_right):
-                cv2.line(lines_img, (0, int(self.h//2*self.hough_scale+x_shift)), 
-                                (int(self.w*self.hough_scale), int(self.h//2*self.hough_scale+x_shift)), 
-                                (1, 0, 0), 1)
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
-                cv2.line(lines_img, (x1, y1), (x2, y2), (0, 255, 0), 1)
-            self.imshow_no_axis(lines_img)
+        # tolerance lines
+        for x_shift in (-self.distance_tol_left, 0, self.distance_tol_right):
+            cv2.line(lines_img, (0, int(self.h//2*self.hough_scale+x_shift)), 
+                            (int(self.w*self.hough_scale), int(self.h//2*self.hough_scale+x_shift)), 
+                            (1, 0, 0), 1)
+        for line in lines:
+            x1, y1, x2, y2 = line #[0]
+            cv2.line(lines_img, (x1, y1), (x2, y2), (0, 255, 0), 1)
+        # self.imshow_no_axis(lines_img)
 
-        return top_line
+        return top_line, lines_img
     
     def is_valid_line(self, top_line):
         expected_y = self.h / 2
@@ -255,11 +257,12 @@ class GapDetector:
         cropped_img = cv2.warpPerspective(img_np, self.M, (self.w, self.h))
 
         edge_img = self.extract_edges(cropped_img)
-        lines = self.get_lines(edge_img, hough_th=80, hough_min_line_length=0.8, hough_max_line_gap=0.2)
-        if lines is None:
-            lines = self.get_lines(edge_img, hough_th=60, hough_min_line_length=0.8, hough_max_line_gap=0.2)
+        lines = self.get_lines(edge_img, hough_th=70, hough_min_line_length=0.75, hough_max_line_gap=0.2)
+        edge_img = 255*cv2.cvtColor(edge_img, cv2.COLOR_GRAY2RGB) # for display
+        # if lines is None:
+        #     lines = self.get_lines(edge_img, hough_th=60, hough_min_line_length=0.8, hough_max_line_gap=0.2)
         
-        top_line = self.get_topmost_line(cropped_img, lines)
+        top_line, lines_img = self.get_topmost_line(edge_img, lines)
         
         if top_line is None:
             result = 0
@@ -280,7 +283,8 @@ class GapDetector:
                     print('No gap detected:')
                     self.visualize(img_np, top_line, result)
         
-        return result, self.visualize(img_np, top_line, result, display=False), 255*cv2.cvtColor(edge_img, cv2.COLOR_GRAY2RGB)
+        # return result, self.visualize(img_np, top_line, result, display=False), 255*cv2.cvtColor(edge_img, cv2.COLOR_GRAY2RGB)
+        return result, self.visualize(img_np, top_line, result, display=False), lines_img #255*cv2.cvtColor(edge_img, cv2.COLOR_GRAY2RGB)
 
 
     def transform_line_to_og(self, line): # xmin, ymin, xmax, ymax
