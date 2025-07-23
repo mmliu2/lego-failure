@@ -4,8 +4,8 @@ from detectron2.engine import DefaultTrainer
 from detectron2.config import get_cfg
 from detectron2 import model_zoo
 import os
-from detectron2.evaluation import COCOEvaluator, inference_on_dataset
-from detectron2.data import build_detection_test_loader
+# from detectron2.evaluation import COCOEvaluator, inference_on_dataset
+# from detectron2.data import build_detection_test_loader
 from detectron2.engine import DefaultPredictor
 import cv2
 import matplotlib.pyplot as plt
@@ -16,7 +16,6 @@ import numpy as np
 class LegoFaceSegmenter:
     def __init__(self, dataset_path="./data/lego-gap-3/train/", output_dir="./gap_detection/output", train=False):
         register_coco_instances("my_dataset", {}, dataset_path + "/_annotations.coco.json", dataset_path)
-
         print(DatasetCatalog.get("my_dataset"))
         print(MetadataCatalog.get("my_dataset").thing_classes)
 
@@ -25,8 +24,8 @@ class LegoFaceSegmenter:
         # Use a pretrained model from model zoo (e.g. Mask R-CNN)
         cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-
         cfg.DATASETS.TRAIN = ("my_dataset",)
+        cfg.DATASETS.TEST = ()
         cfg.DATALOADER.NUM_WORKERS = 2
         cfg.SOLVER.IMS_PER_BATCH = 2
         cfg.SOLVER.BASE_LR = 0.00025  # Adjust as needed
@@ -34,7 +33,6 @@ class LegoFaceSegmenter:
         cfg.SOLVER.STEPS = []         # No LR decay
         cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  # Adjust to number of classes in your dataset
-
         cfg.OUTPUT_DIR = output_dir
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
@@ -49,7 +47,18 @@ class LegoFaceSegmenter:
         cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
         self.predictor = DefaultPredictor(cfg)
 
+        # for postprocessing
         self.ones_kernel = np.ones((3, 3), np.uint8)
+        self.lower_line_kernel = np.array([
+            [0, 0, 0],
+            [0, 0, 0],
+            [1, 1, 1]
+        ], dtype=np.uint8)
+        self.upper_line_kernel = np.array([
+            [1, 1, 1],
+            [0, 0, 0],
+            [0, 0, 0]
+        ], dtype=np.uint8)
 
 
     def get_top_bottom_masks(self, mask1, mask2):
@@ -81,13 +90,13 @@ class LegoFaceSegmenter:
 
     def segment(self, img, rotation=-1):
         img = img.copy()
+
         outputs = self.predictor(img)
+        
         v = Visualizer(img[:, :, ::-1], MetadataCatalog.get("my_dataset_train"), scale=1.2, instance_mode=ColorMode.SEGMENTATION)
         segmented_img = v.draw_instance_predictions(outputs["instances"].to("cpu")).get_image()
 
         instances = outputs["instances"].to("cpu")
-        
-        # Get top 2 predictions
         sorted_scores = instances.scores.argsort(descending=True)
         sorted_instances = instances[sorted_scores]
         img = np.rot90(img, k=rotation)
@@ -98,32 +107,20 @@ class LegoFaceSegmenter:
             combined_mask = np.max(masks, axis=0)
             self.draw_mask_outline(img, combined_mask, color=(255, 0, 255))
             return segmented_img, img, []
-        
         masks = masks[:2]      # (N, H, W) binary masks
 
         if np.any(masks[0] & masks[1]): 
             print(f"LegoFaceSegmenter: masks overlap")
-            self.draw_mask_outline(img, masks[0], color=(0, 255, 0))
-            self.draw_mask_outline(img, masks[1], color=(255, 0, 0))
+            self.draw_mask_outline(img, masks[0], color=(255, 0, 255))
+            self.draw_mask_outline(img, masks[1], color=(205, 100, 255))
             return segmented_img, img, []
 
         top_mask, bottom_mask = self.get_top_bottom_masks(masks[0], masks[1])
-    
-        lower_line_kernel = np.array([
-            [0, 0, 0],
-            [0, 0, 0],
-            [1, 1, 1]
-        ], dtype=np.uint8)
 
-        upper_line_kernel = np.array([
-            [1, 1, 1],
-            [0, 0, 0],
-            [0, 0, 0]
-        ], dtype=np.uint8)
         
         lines = []
 
-        for mask, kernel in ((top_mask, lower_line_kernel), (bottom_mask, upper_line_kernel)):
+        for mask, kernel in ((top_mask, self.lower_line_kernel), (bottom_mask, self.upper_line_kernel)):
             # Kernel specifying which neighbors to check (horizontal 1D)
             mask_img = mask.astype(np.uint8)
             mask_img = cv2.dilate(cv2.erode(mask_img, self.ones_kernel), self.ones_kernel) # smoothing
@@ -155,11 +152,10 @@ class LegoFaceSegmenter:
         return segmented_img, img, lines
     
 
-if '__name__' == 'main':
-    dataset_path = "./data/lego-gap-2/train/"
-    segmenter = LegoFaceSegmenter(dataset_path=dataset_path, output_dir="./output", train=False)
+if __name__ == '__main__':
+    dataset_path = "./data/lego-gap-3/train/"
+    segmenter = LegoFaceSegmenter(dataset_path=dataset_path, output_dir="./models/segmenter_output", train=False)
     print('LegoFaceSegmenter initialized.')
-
 
     files = [dataset_path + f for f in os.listdir(dataset_path) if f[-4:] == '.jpg']
 
@@ -168,9 +164,12 @@ if '__name__' == 'main':
 
         segmented_img, display_img, lines = segmenter.segment(img)
 
-        segmented_img = cv2.cvtColor(segmented_img, cv2.COLOR_BGR2RGB)
-        plt.imshow(segmented_img)
-        plt.show()
-        display_img = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
-        plt.imshow(display_img)
-        plt.show()
+        # segmented_img = cv2.cvtColor(segmented_img, cv2.COLOR_BGR2RGB)
+        # plt.imshow(segmented_img)
+        # plt.show()
+        # display_img = cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
+        # plt.imshow(display_img)
+        # plt.show()
+
+        cv2.imwrite(f'/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/data/lego_segmenter_examples/{i:000}_segmented.png', segmented_img)
+        cv2.imwrite(f'/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/data/lego_segmenter_examples/{i:000}_vis.png', display_img)

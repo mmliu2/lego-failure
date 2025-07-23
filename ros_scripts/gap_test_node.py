@@ -15,7 +15,7 @@ from sensor_msgs.msg import CompressedImage
 import os
 import sys
 
-from gap_detection import gap_detector
+from gap_detection import lego_face_segmenter
 
 
 class GapTestNode:
@@ -70,10 +70,7 @@ if __name__ == '__main__':
 
     rospy.init_node(f'{robot_name}_gap_test_node', anonymous=False)
 
-    if robot_name == 'yk_destroyer':
-        detector = gap_detector.GapDetector(robot_name)
-    else:
-        detector = gap_detector.GapDetector(robot_name)
+    detector = lego_face_segmenter.LegoFaceSegmenter(robot_name)
 
     node = GapTestNode(robot_name, detector)
 
