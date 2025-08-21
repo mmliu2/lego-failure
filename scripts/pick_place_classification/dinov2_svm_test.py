@@ -3,7 +3,7 @@ import torch
 import torchvision.transforms as T
 from PIL import Image
 import os
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import os
 import pickle
@@ -42,8 +42,10 @@ def results(paths, expected_output=''):
     print(count/len(paths))
 
 if __name__ == "__main__":
-    model_path = os.getcwd() + './pick_place_svm_061225.pkl'
-    test_path = os.getcwd() + '../data/test_images/'
+    model_date = '081825'
+    test_images_date = '081825' # 061325
+    model_path = f'/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/models/pick_place_svm_{model_date}.pkl'
+    test_path = f'/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/data/pick_place_data/test_images_{test_images_date}'
 
     warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -57,7 +59,7 @@ if __name__ == "__main__":
     dinov2_vits14.to(device)
 
     # image paths
-    success_test_dir = os.path.join(test_path, 'new_success/')
+    success_test_dir = os.path.join(test_path, 'success/')
     success_paths = ([os.path.join(success_test_dir, f) for f in os.listdir(success_test_dir)])
  
     failure_test_dir = os.path.join(test_path, 'failure/')

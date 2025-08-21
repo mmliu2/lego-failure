@@ -3,7 +3,7 @@ import torch
 from PIL import Image
 import os
 import json
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 import torchvision.transforms as T
 
@@ -41,8 +41,8 @@ def compute_embeddings(files: list) -> dict:
 
 
 if __name__ == "__main__":
-    train_dir = '../data/train_images_061225'
-    model_save_path = './pick_place_svm_061225.pkl'
+    train_dir = '/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/data/pick_place_data/train_images_081825'
+    model_save_path = '/home/mfi/repos/ros1_ws/src/mmliu/lego-failure/models/pick_place_svm_081825.pkl'
 
     labels = {}
     for folder in os.listdir(train_dir):
