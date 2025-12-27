@@ -15,7 +15,7 @@ import argparse
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
 class LegoFaceSegmenter:
-    def __init__(self, dataset_path="./data/lego-gap-4/train/", output_dir="./gap_detection/output", train=False):
+    def __init__(self, dataset_path="./data/lego-gap-6/train/", output_dir="./gap_detection/output", train=False):
         self.width, self.height = 640, 480
 
         register_coco_instances("my_dataset", {}, dataset_path + "/_annotations.coco.json", dataset_path)
